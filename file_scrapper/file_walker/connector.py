@@ -51,12 +51,12 @@ class Connector(BaseConnector):
         except Exception as e:
             print(f"Something Went Wrong:{e}")
 
-    def upload_to_aws_resource(self, file_path: str, bucket_name: str):
+    def upload_to_aws_resource(self, file_path: str, bucket_name: str, filename: str):
         """
         upload the files to GCS
         """
         try:
-            self.aws_client.upload_file(file_path, bucket_name, file_path)
+            self.aws_client.upload_file(filename, bucket_name, file_path)
             print("File Uploaded successful")
         except NoCredentialsError:
             print("AWS credentials not found")
@@ -74,13 +74,13 @@ class Connector(BaseConnector):
         except Exception as e:
             print(f"Error connecting to GCS: {str(e)}")
 
-    def upload_to_gcs_resource(self, file_path: str, bucket_name: str):
+    def upload_to_gcs_resource(self, file_path: str, bucket_name: str, filename:str):
         """
         upload the files to GCS
         """
         try:
             bucket = self.gcs_client.bucket(bucket_name)
-            blob = bucket.blob(file_path)
+            blob = bucket.blob(filename)
             blob.upload_from_filename(file_path)
             print("File Uploaded successful")
         except Exception as e:
