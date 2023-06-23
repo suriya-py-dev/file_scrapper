@@ -17,6 +17,11 @@ class BucketNameNotFound(Exception):
         self.message = f"{name} is Missed"
 
 
+class CredNotFound(Exception):
+    def __init__(self, message):
+        self.message = message
+
+
 class FileWalker(Connector):
     """
     Code to load all the files in the folder
@@ -30,6 +35,31 @@ class FileWalker(Connector):
         self.connect_to_aws_client()
         self.connect_to_gcs_client()
 
+    def _validate_gcs(self, bucket_name: str):
+        """Validate GCS cred and bucket name provided or not"""
+        gcs_cred = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+ 
+        if not gcs_cred:
+            message = "Please add GOOGLE_APPLICATION_CREDENTIALS env variable"
+            raise CredNotFound(message)
+ 
+        if bucket_name is None:
+            name = "GCS Bucket Name"
+            raise BucketNameNotFound(name)
+
+    def _validate_aws(self, bucket_name: str):
+        """Validate AWS cred and bucket name provided or not"""
+        access_key = os.getenv('AWS_ACCESS_KEY')
+        secret_key = os.getenv('AWS_SECRET_KEY')
+
+        if not access_key or not secret_key:
+            message = "One of the key is missed: AWS_ACCESS_KEY or AWS_SECRET_KEY"
+            raise CredNotFound(message)
+
+        if bucket_name is None:
+            name = "AWS Bucket Name"
+            raise BucketNameNotFound(name)
+         
     def walk(self, path_to_walk: str, gcs_bucket_name=None,
              aws_bucket_name=None, all_to_gcs=False,
              all_to_aws=False):
@@ -40,13 +70,18 @@ class FileWalker(Connector):
             message = "Can't upload all data to both cloud storage"
             raise MultipleCloudExist(message)
 
-        if all_to_aws and aws_bucket_name is None:
-            name = "AWS Bucket Name"
-            raise BucketNameNotFound(name)
+        # validate only aws is enabled
+        if all_to_aws:
+            self._validate_aws(aws_bucket_name)
 
-        if all_to_gcs and gcs_bucket_name is None:
-            name = "GCS Bucket Name"
-            raise BucketNameNotFound(name)
+        # validate only gcs is enabled
+        if all_to_gcs:
+            self._validate_gcs(gcs_bucket_name)
+
+        # validate both enabled
+        if not all_to_gcs and not all_to_aws:
+            self._validate_aws(aws_bucket_name)
+            self._validate_gcs(gcs_bucket_name)
 
         self._pre_run()
 
@@ -56,14 +91,14 @@ class FileWalker(Connector):
                 file_ext = os.path.splitext(file)[1].lower()
                 file_ext = file_ext.replace(".", "")
                 if all_to_aws:
-                    self.upload_to_aws_resource(file_path, aws_bucket_name)
+                    self.upload_to_aws_resource(file_path, aws_bucket_name, file)
                 elif all_to_gcs:
-                    self.upload_to_gcs_resource(file_path, gcs_bucket_name)
+                    self.upload_to_gcs_resource(file_path, gcs_bucket_name, file)
                 elif file_ext in self.media_list:
-                    self.upload_to_aws_resource(file_path, aws_bucket_name)
+                    self.upload_to_aws_resource(file_path, aws_bucket_name, file)
                 elif file_ext in self.document_list:
-                    self.upload_to_aws_resource(file_path, aws_bucket_name)
+                    self.upload_to_aws_resource(file_path, aws_bucket_name, file)
                 elif file_ext in self.image_list:
-                    self.upload_to_gcs_resource(file_path, gcs_bucket_name)
+                    self.upload_to_gcs_resource(file_path, gcs_bucket_name, file)
                 else:
                     print(f"Skipped {file_path}")
