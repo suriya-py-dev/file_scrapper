@@ -22,6 +22,44 @@ class TestFileWalker:
         error_message = "Can't upload all data to both cloud storage"
 
         assert str(exception_info.value) == error_message
+    def test_validate_aws(self):
+        """
+        Test validations for aws
+        """
+        with pytest.raises(CredNotFound) as exception_info:
+            walker = FileWalker()._validate_aws("")
+        error_message = "One of the key is missed: AWS_ACCESS_KEY or AWS_SECRET_KEY"
+
+        assert str(exception_info.value) == error_message
+
+        os.environ['AWS_ACCESS_KEY'] = 'Test'
+        os.environ['AWS_SECRET_KEY'] = 'Test'
+
+        with pytest.raises(BucketNameNotFound) as exception_info:
+            walker = FileWalker()._validate_aws(None)
+
+        error_message = 'AWS Bucket Name'
+
+        assert str(exception_info.value) == error_message
+
+    def test_validate_gcs(self):
+        """
+        Test validations for gcs
+        """
+        with pytest.raises(CredNotFound) as exception_info:
+            walker = FileWalker()._validate_gcs("")
+        error_message = "Please add GOOGLE_APPLICATION_CREDENTIALS env variable"
+
+        assert str(exception_info.value) == error_message
+
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'Test'
+
+        with pytest.raises(BucketNameNotFound) as exception_info:
+            walker = FileWalker()._validate_gcs(None)
+
+        error_message = 'GCS Bucket Name'
+
+        assert str(exception_info.value) == error_message
 
     def test_files_to_walk(self, tmpdir, mocker):
         """Test the dir files uploaded to cloud or not"""
