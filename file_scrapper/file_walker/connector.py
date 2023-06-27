@@ -12,35 +12,24 @@ class BaseConnector(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def connect_to_aws_client(self):
+    def connect_to_client(self):
         pass
 
     @abstractmethod
-    def upload_to_aws_resource(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
-    def connect_to_gcs_client(self):
-        pass
-
-    @abstractmethod
-    def upload_to_gcs_resource(self, *args, **kwargs):
+    def upload_to_resource(self, *args, **kwargs):
         pass
 
 
-class Connector(BaseConnector):
-    def __init__(self):
-        self.gcs_client = None
-        self.aws_client = None
-
-    def connect_to_aws_client(self):
+class AWSConnector(BaseConnector):
+    def connect_to_client(self):
         """
         Connect to GCS using project id
         """
+        client = None
         try:
             access_key = os.getenv('AWS_ACCESS_KEY')
             secret_key = os.getenv('AWS_SECRET_KEY')
-            self.aws_client = boto3.client(
+            client = boto3.client(
                 's3',
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key
@@ -51,35 +40,41 @@ class Connector(BaseConnector):
         except Exception as e:
             print(f"Something Went Wrong:{e}")
 
-    def upload_to_aws_resource(self, file_path: str, bucket_name: str, filename: str):
+        return client
+
+    def upload_to_resource(self, file_path: str, bucket_name: str, filename: str, client: boto3.client):
         """
         upload the files to GCS
         """
         try:
-            self.aws_client.upload_file(filename, bucket_name, file_path)
+            client.upload_file(filename, bucket_name, file_path)
             print("File Uploaded successful")
         except NoCredentialsError:
             print("AWS credentials not found")
         except Exception as e:
             print(f"Something Went Wrong:{e}")
 
-    def connect_to_gcs_client(self):
+
+class GCSConnector(BaseConnector):
+    def connect_to_client(self):
         """
         Connect to GCS using project id
         """
+        client = None
         try:
-            gcs_project_id = os.getenv('GCS_PROJECT_ID')
-            self.gcs_client = storage.Client(project=gcs_project_id)
+            client = storage.Client()
             print("GCS Connected Successfully")
         except Exception as e:
             print(f"Error connecting to GCS: {str(e)}")
 
-    def upload_to_gcs_resource(self, file_path: str, bucket_name: str, filename:str):
+        return client
+
+    def upload_to_resource(self, file_path: str, bucket_name: str, filename: str, client: storage.Client):
         """
         upload the files to GCS
         """
         try:
-            bucket = self.gcs_client.bucket(bucket_name)
+            bucket = client.bucket(bucket_name)
             blob = bucket.blob(filename)
             blob.upload_from_filename(file_path)
             print("File Uploaded successful")
